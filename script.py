@@ -1,4 +1,5 @@
 import json
+import os
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -40,18 +41,21 @@ def get_weather(city: str) -> WeatherData:
     return WeatherData(city, temp_c, country, humidity, wind)
 
 
-def main():
+def build_report() -> str:
+    lines = []
+
     now = datetime.now()
-    print(f"Date:  {now.strftime('%d.%m.%Y %H:%M:%S')}\n")
+    lines.append(f"Date:  {now.strftime('%d.%m.%Y %H:%M:%S')}")
+    lines.append("")
+
     cities = []
     seen = set()
-
     for city in load_cities("Cities.txt"):
         if city not in seen:
             seen.add(city)
             cities.append(city)
 
-    print("Cities:")
+    lines.append("Cities:")
     city_header = (
         f"{'City':<20}"
         f"{'Country':<18}"
@@ -60,16 +64,15 @@ def main():
         f"{'Wind':>8}"
     )
     city_line = "-" * len(city_header)
-    print(city_header)
-    print(city_line)
+    lines.append(city_header)
+    lines.append(city_line)
 
     weather_data = []
-
     for city in cities:
         try:
             weather = get_weather(city)
             weather_data.append(weather)
-            print(
+            lines.append(
                 f"{weather.city:<20}"
                 f"{weather.country:<18}"
                 f"{f'{weather.temp_c:+d} °C':>8}"
@@ -77,9 +80,9 @@ def main():
                 f"{f'{weather.wind_kmph} km/h':>8}"
             )
         except Exception as e:
-            print(f"{city:<20}{'-':<18}{'error':>8}  ({e})")
+            lines.append(f"{city:<20}{'-':<18}{'error':>8}  ({e})")
 
-    print(city_line)
+    lines.append(city_line)
 
     countries = {}
     for weather in weather_data:
@@ -120,13 +123,13 @@ def main():
     )
     line = "-" * len(header)
 
-    print()
-    print("Grouped by country:")
-    print(header)
-    print(line)
+    lines.append("")
+    lines.append("Grouped by country:")
+    lines.append(header)
+    lines.append(line)
 
     for country, count, avg_temp, min_temp, max_temp, avg_hum, avg_wind in rows:
-        print(
+        lines.append(
             f"{country:<{w_country}}"
             f"{count:>{w_count}}"
             f"{f'{avg_temp:+d} °C':>{w_avg}}"
@@ -135,7 +138,24 @@ def main():
             f"{f'{avg_hum} %':>{w_hum}}"
             f"{f'{avg_wind} km/h':>{w_wind}}"
         )
-    print(line)
+    lines.append(line)
+
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    report = build_report()
+
+    print(report, end="")
+
+    os.makedirs("results", exist_ok=True)
+    stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    path = os.path.join("results", f"weather_{stamp}.txt")
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(report)
+
+    print(f"\nResults saved to: {path}")
 
 
 if __name__ == "__main__":
